@@ -1,0 +1,46 @@
+# CDC audit trail stack.
+# Reuses the pre-existing `postgres` (audit store, db: cdc_audit) and `redis`
+# (stream broker) containers on `shared-network`; adds only the audited source
+# DB (wal_level=logical) and Debezium Server.
+name: cdc
+
+services:
+  source-db:
+    image: postgres:16-alpine
+    container_name: cdc-source-db
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_slot_wal_keep_size=2GB"]
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_pw
+      POSTGRES_DB: shop
+    ports:
+      - "5433:5432"
+    volumes:
+      - source-data:/var/lib/postgresql/data
+      - ./infra/source/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [shared-network]
+
+  debezium:
+    image: quay.io/debezium/server:3.0
+    container_name: cdc-debezium
+    depends_on:
+      source-db:
+        condition: service_healthy
+    volumes:
+      - ./infra/debezium/application.properties:/debezium/config/application.properties:ro
+      - debezium-data:/debezium/data
+    networks: [shared-network]
+    restart: unless-stopped
+
+volumes:
+  source-data:
+  debezium-data:
+
+networks:
+  shared-network:
+    external: true

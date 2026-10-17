@@ -1,0 +1,14 @@
+{
+  "name": "cdc-audit",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "writer": "npm run start -w @cdc/writer",
+    "shop": "npm run start -w @cdc/shop",
+    "api": "npm run start -w @cdc/api",
+    "web": "npm run dev -w @cdc/web",
+    "test": "npm test -w @cdc/writer -w @cdc/api -w @cdc/shop"
+  }
+}
